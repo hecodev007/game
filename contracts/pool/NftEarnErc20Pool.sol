@@ -57,7 +57,7 @@ contract NftEarnErc20Pool is Ownable, IERC721Receiver, ReentrancyGuard {
 
     mapping(address => UserInfo) private userInfo;
     EnumerableSet.AddressSet private _callers;
-
+    mapping(uint256 => uint256) private nftPower;
     uint256 public startBlock;
     uint256 public endBlock;
 
@@ -239,8 +239,7 @@ contract NftEarnErc20Pool is Ownable, IERC721Receiver, ReentrancyGuard {
         user.nfts.remove(_tokenId);
 
         harvest();
-
-        uint256 power = getNftPower(_tokenId);
+        uint256 power = nftPower[_tokenId];
         accShare = accShare.sub(power);
         user.share = user.share.sub(power);
         user.rewardDebt = user.share.mul(accRewardTokenPerShare).div(1e12);
@@ -294,7 +293,7 @@ contract NftEarnErc20Pool is Ownable, IERC721Receiver, ReentrancyGuard {
 //        return power;
 //    }
 
-    function stake(uint256 tokenId,uint256 memory power) public {
+    function stake(uint256 tokenId,uint256  power) public {
         UserInfo storage user = userInfo[msg.sender];
 
         updatePool();
@@ -312,6 +311,7 @@ contract NftEarnErc20Pool is Ownable, IERC721Receiver, ReentrancyGuard {
         }
 
         //uint256 power = power;
+        nftPower[tokenId] = power;
         user.share = user.share.add(power);
         user.rewardDebt = user.share.mul(accRewardTokenPerShare).div(1e12);
         accShare = accShare.add(power);

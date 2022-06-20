@@ -56,8 +56,11 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         uint256 indexed id,
         address to
     );
-
-    // event Upgraded(uint256 indexed id0, uint256 indexed id1, uint256 new_id, address user);
+    event BatchMinted(
+        uint256[] id,
+        address to
+    );
+    event Upgraded(uint256 indexed id0, uint256 indexed id1, uint256 new_id, address user);
 
     /*
      *     bytes4(keccak256('getRoyalties(uint256)')) == 0xbb3bafd6
@@ -81,7 +84,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
 
     uint256 public price;
     uint256 public price_other;
-   // mapping(uint256 => LibPart.NftInfo) private _nfts;
+    // mapping(uint256 => LibPart.NftInfo) private _nfts;
     address public _teamWallet;
     constructor() public ERC721("", "")
     {
@@ -165,13 +168,14 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         if (address(_tokenOther) != address(0)) {
             TransferHelper.safeTransferFrom(address(_tokenOther), msg.sender, _teamWallet, price_other.mul(amount));
         }
-       if (getReward(msg.sender) == true){
-           _crystalNft.mint(msg.sender);
-       }
-
-        for (uint256 i = 0; i < amount; i++) {
-            _doMint(to);
+        if (getReward(msg.sender) == true) {
+            _crystalNft.mint(msg.sender);
         }
+        uint256[] memory nftIds = new uint256[](amount);
+        for (uint256 i = 0; i < amount; i++) {
+            nftIds[i] = _doMint(to);
+        }
+        emit BatchMinted(nftIds, to);
     }
 
     function getReward(address user) internal returns (bool){
@@ -180,7 +184,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         if (chance > 0) {
             UserChance[user] = chance + 5;
             if (seed <= chance + 5) {
-                UserChance[user] = 0 ;
+                UserChance[user] = 0;
                 return true;
             } else {
                 return false;
@@ -189,7 +193,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         } else {
             UserChance[user] = 5;
             if (seed <= 1) {
-                UserChance[user] = 0 ;
+                UserChance[user] = 0;
                 return true;
             } else {
                 return false;
@@ -214,13 +218,22 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         }
         tokenId = _doMint(to);
     }
-//    function getPower(uint256 tokenId) public view  returns (uint256) {
-//        return _nfts[tokenId].power;
-//    }
-//
-//    function getLevel(uint256 tokenId) public view  returns (uint256) {
-//        return _nfts[tokenId].level;
-//    }
+    //    function getPower(uint256 tokenId) public view  returns (uint256) {
+    //        return _nfts[tokenId].power;
+    //    }
+    //
+    //    function getLevel(uint256 tokenId) public view  returns (uint256) {
+    //        return _nfts[tokenId].level;
+    //    }
+    function upgradeNft(uint256 nftId1, uint256 nftId2) public nonReentrant whenNotPaused
+    {
+        burn_inter(nftId1);
+        burn_inter(nftId2);
+
+        uint256 tokenId = _doMint(msg.sender);
+
+        emit Upgraded(nftId1, nftId2, tokenId, msg.sender);
+    }
 
     function getCurId() public view returns (uint256){
         return _tokenId;
@@ -233,4 +246,10 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         _burn(tokenId);
     }
 
+    function burn_inter(uint256 tokenId) internal {
+        address owner = ERC721.ownerOf(tokenId);
+        require(_msgSender() == owner, "caller is not the token owner");
+
+        _burn(tokenId);
+    }
 }
