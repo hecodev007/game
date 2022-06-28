@@ -11,35 +11,36 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+
 import "../libraries/InitializableOwner.sol";
 //import "../interfaces/IDsgNft.sol";
 import "../libraries/LibPart.sol";
 import "../libraries/Random.sol";
 import "./CrystalNft.sol";
+import "hardhat/console.sol";
 
-
-//library TransferHelper {
+//library SafeERC20 {
 //    function safeApprove(address token, address to, uint value) internal {
 //        // bytes4(keccak256(bytes('approve(address,uint256)')));
 //        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x095ea7b3, to, value));
-//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: APPROVE_FAILED');
+//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SafeERC20: APPROVE_FAILED');
 //    }
 //
 //    function safeTransfer(address token, address to, uint value) internal {
 //        // bytes4(keccak256(bytes('transfer(address,uint256)')));
 //        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0xa9059cbb, to, value));
-//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FAILED');
+//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SafeERC20: TRANSFER_FAILED');
 //    }
 //
 //    function safeTransferFrom(address token, address from, address to, uint value) internal {
 //        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
 //        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
-//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FROM_FAILED');
+//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SafeERC20: TRANSFER_FROM_FAILED');
 //    }
 //
 //    function safeTransferETH(address to, uint value) internal {
 //        (bool success,) = to.call{value : value}(new bytes(0));
-//        require(success, 'TransferHelper: ETH_TRANSFER_FAILED');
+//        require(success, 'SafeERC20: ETH_TRANSFER_FAILED');
 //    }
 //}
 
@@ -74,8 +75,8 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
     uint256 private _tokenId;
     string private _baseURIVar;
 
-    IERC20 private _token;
-    IERC20 private _tokenOther;
+    IERC20 public _token;
+    IERC20 public _tokenOther;
     CrystalNft private _crystalNft;
     address public _feeWallet;
 
@@ -104,7 +105,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         _name = name_;
         _symbol = symbol_;
         _baseURIVar = baseURI_;
-
+        _teamWallet = teamAddress;
     }
 
 
@@ -160,13 +161,16 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
     ) public payable nonReentrant {
         require(amount >= 5, "low amount");
 
-        //TransferHelper.safeTransferETH(_teamWallet, msg.value);
+        //SafeERC20.safeTransferETH(_teamWallet, msg.value);
         if (address(_token) != address(0)) {
-            TransferHelper.safeTransferFrom(address(_token), msg.sender, _teamWallet, price.mul(amount));
+
+            SafeERC20.safeTransferFrom(_token, msg.sender, _teamWallet, price.mul(amount));
+
         }
 
         if (address(_tokenOther) != address(0)) {
-            TransferHelper.safeTransferFrom(address(_tokenOther), msg.sender, _teamWallet, price_other.mul(amount));
+            // console.log(price.mul(amount));
+            SafeERC20.safeTransferFrom(_tokenOther, msg.sender, _teamWallet, price_other.mul(amount));
         }
         if (getReward(msg.sender) == true) {
             _crystalNft.mint(msg.sender);
@@ -208,13 +212,13 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
     ) public payable nonReentrant returns (uint256 tokenId){
         //  require(msg.value >= price, "low price");
 
-        //TransferHelper.safeTransferETH(_teamWallet, msg.value);
+        //SafeERC20.safeTransferETH(_teamWallet, msg.value);
         if (address(_token) != address(0)) {
-            TransferHelper.safeTransferFrom(address(_token), msg.sender, _teamWallet, price);
+            SafeERC20.safeTransferFrom(_token, msg.sender, _teamWallet, price);
         }
 
         if (address(_tokenOther) != address(0)) {
-            TransferHelper.safeTransferFrom(address(_tokenOther), msg.sender, _teamWallet, price_other);
+            SafeERC20.safeTransferFrom(_tokenOther, msg.sender, _teamWallet, price_other);
         }
         tokenId = _doMint(to);
     }
