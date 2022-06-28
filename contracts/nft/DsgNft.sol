@@ -230,6 +230,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         uint256 tokenId = _doMint(msg.sender);
         emit Upgraded(nftId1, nftId2, tokenId, msg.sender);
     }
+
     function composeNft(uint256 nftId1, uint256 nftId2,uint256 composeId) public nonReentrant whenNotPaused
     {
         burn_inter(nftId1);
