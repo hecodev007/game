@@ -62,7 +62,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         address to
     );
     event Upgraded(uint256 indexed id0, uint256 indexed id1, uint256 new_id, address user);
-
+    event ComposeNft(uint256 indexed id0, uint256 indexed id1, uint256 new_id, address user,uint256 compose_id);
     /*
      *     bytes4(keccak256('getRoyalties(uint256)')) == 0xbb3bafd6
      *     bytes4(keccak256('sumRoyalties(uint256)')) == 0x09b94e2a
@@ -230,7 +230,14 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         uint256 tokenId = _doMint(msg.sender);
         emit Upgraded(nftId1, nftId2, tokenId, msg.sender);
     }
-
+    function composeNft(uint256 nftId1, uint256 nftId2,uint256 composeId) public nonReentrant whenNotPaused
+    {
+        burn_inter(nftId1);
+        burn_inter(nftId2);
+        uint256 tokenId = _doMint(msg.sender);
+    //ComposeNft
+        emit ComposeNft(nftId1, nftId2, tokenId, msg.sender,composeId);
+    }
     function getCurId() public view returns (uint256){
         return _tokenId;
     }
