@@ -234,7 +234,7 @@ contract Ownable {
 //    event Approval(address indexed owner, address indexed spender, uint256 value);
 //}
 
-contract AirDrop is Ownable {
+contract InvitePool is Ownable {
     using SafeMath for *;
     //using SafeERC20 for IERC20;
     mapping(address => address[]) public recommend;
@@ -373,9 +373,10 @@ contract AirDrop is Ownable {
     }
 
     function addRecommend(address _self, address _recommend) onlyOperator external returns (bool) {
-        if (_self == _recommend || _recommend == address(0)) {
-            _recommend = owner();
-        }
+//        if (_self == _recommend || _recommend == address(0)) {
+//          //  _recommend = owner();
+//
+//        }
         return addWhiteList(_self, _recommend);
 
     }

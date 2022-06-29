@@ -82,7 +82,7 @@ contract NftRewardPool is Ownable, IERC721Receiver, ReentrancyGuard {
             if (curTime.sub(startTime) > 7 days) {
                 startTime = startTime.add(7 days);
                 //  totalNft
-                uint256 bal = rewardToken.balanceOf(address(this));
+                uint256 bal = rewardToken.balanceOf(address(this)).div(2);
                 rewardTokenPerShare = bal.div(totalNft);
             }
         }
