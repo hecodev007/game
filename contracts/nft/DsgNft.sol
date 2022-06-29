@@ -18,31 +18,8 @@ import "../libraries/LibPart.sol";
 import "../libraries/Random.sol";
 import "./CrystalNft.sol";
 import "hardhat/console.sol";
+import "../InvitePool.sol";
 
-//library SafeERC20 {
-//    function safeApprove(address token, address to, uint value) internal {
-//        // bytes4(keccak256(bytes('approve(address,uint256)')));
-//        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x095ea7b3, to, value));
-//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SafeERC20: APPROVE_FAILED');
-//    }
-//
-//    function safeTransfer(address token, address to, uint value) internal {
-//        // bytes4(keccak256(bytes('transfer(address,uint256)')));
-//        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0xa9059cbb, to, value));
-//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SafeERC20: TRANSFER_FAILED');
-//    }
-//
-//    function safeTransferFrom(address token, address from, address to, uint value) internal {
-//        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
-//        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
-//        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SafeERC20: TRANSFER_FROM_FAILED');
-//    }
-//
-//    function safeTransferETH(address to, uint value) internal {
-//        (bool success,) = to.call{value : value}(new bytes(0));
-//        require(success, 'SafeERC20: ETH_TRANSFER_FAILED');
-//    }
-//}
 
 contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
 {
@@ -50,6 +27,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
     using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private _minters;
+    InvitePool public  inviteLayer;
     using Strings for uint256;
     mapping(address => uint256) UserChance;
 
@@ -62,7 +40,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         address to
     );
     event Upgraded(uint256 indexed id0, uint256 indexed id1, uint256 new_id, address user);
-    event ComposeNft(uint256 indexed id0, uint256 indexed id1, uint256 new_id, address user,uint256 compose_id);
+    event ComposeNft(uint256 indexed id0, uint256 indexed id1, uint256 new_id, address user, uint256 compose_id);
     /*
      *     bytes4(keccak256('getRoyalties(uint256)')) == 0xbb3bafd6
      *     bytes4(keccak256('sumRoyalties(uint256)')) == 0x09b94e2a
@@ -75,8 +53,8 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
     uint256 private _tokenId;
     string private _baseURIVar;
 
-    IERC20 public _token;
-    IERC20 public _tokenOther;
+    IERC20 public _token;//egc
+    IERC20 public _busd;
     CrystalNft private _crystalNft;
     address public _feeWallet;
 
@@ -87,6 +65,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
     uint256 public price_other;
     // mapping(uint256 => LibPart.NftInfo) private _nfts;
     address public _teamWallet;
+    address public _rewardWallet;
     constructor() public ERC721("", "")
     {
         super._initialize();
@@ -129,6 +108,10 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         _feeWallet = feeWallet_;
     }
 
+    function setRewardWallet(address rewardWallet) public onlyOwner {
+        _rewardWallet = rewardWallet;
+    }
+
     function setCrystalNft(address crystalNft_) public onlyOwner {
         _crystalNft = CrystalNft(crystalNft_);
     }
@@ -140,7 +123,7 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
 
     function setFeeToken(address token, address token_other) public onlyOwner {
         _token = IERC20(token);
-        _tokenOther = IERC20(token_other);
+        _busd = IERC20(token_other);
     }
 
 
@@ -160,17 +143,24 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         address to, uint256 amount
     ) public payable nonReentrant {
         require(amount >= 5, "low amount");
+        require(_teamWallet != address(0), "_teamWallet");
 
         //SafeERC20.safeTransferETH(_teamWallet, msg.value);
         if (address(_token) != address(0)) {
-
             SafeERC20.safeTransferFrom(_token, msg.sender, _teamWallet, price.mul(amount));
 
         }
 
-        if (address(_tokenOther) != address(0)) {
-            // console.log(price.mul(amount));
-            SafeERC20.safeTransferFrom(_tokenOther, msg.sender, _teamWallet, price_other.mul(amount));
+        if (address(_busd) != address(0)) {
+            address upper = inviteLayer.getOneUpper(msg.sender);
+            uint256 money = price_other.mul(amount);
+            if (upper != address(0)) {
+                SafeERC20.safeTransferFrom(_busd, msg.sender, upper, money.mul(5).div(100));
+            }
+            if (_rewardWallet != address(0)) {
+                SafeERC20.safeTransferFrom(_busd, msg.sender, _rewardWallet, money.mul(15).div(100));
+            }
+            SafeERC20.safeTransferFrom(_busd, msg.sender, _teamWallet, money.mul(80).div(100));
         }
         if (getReward(msg.sender) == true) {
             _crystalNft.mint(msg.sender);
@@ -217,8 +207,8 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
             SafeERC20.safeTransferFrom(_token, msg.sender, _teamWallet, price);
         }
 
-        if (address(_tokenOther) != address(0)) {
-            SafeERC20.safeTransferFrom(_tokenOther, msg.sender, _teamWallet, price_other);
+        if (address(_busd) != address(0)) {
+            SafeERC20.safeTransferFrom(_busd, msg.sender, _teamWallet, price_other);
         }
         tokenId = _doMint(to);
     }
@@ -231,14 +221,15 @@ contract DsgNft is ERC721, InitializableOwner, ReentrancyGuard, Pausable
         emit Upgraded(nftId1, nftId2, tokenId, msg.sender);
     }
 
-    function composeNft(uint256 nftId1, uint256 nftId2,uint256 composeId) public nonReentrant whenNotPaused
+    function composeNft(uint256 nftId1, uint256 nftId2, uint256 composeId) public nonReentrant whenNotPaused
     {
         burn_inter(nftId1);
         burn_inter(nftId2);
         uint256 tokenId = _doMint(msg.sender);
-    //ComposeNft
-        emit ComposeNft(nftId1, nftId2, tokenId, msg.sender,composeId);
+        //ComposeNft
+        emit ComposeNft(nftId1, nftId2, tokenId, msg.sender, composeId);
     }
+
     function getCurId() public view returns (uint256){
         return _tokenId;
     }

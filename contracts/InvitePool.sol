@@ -393,6 +393,9 @@ contract InvitePool is Ownable {
             }
         }
     }
+    function getOneUpper(address user) public view returns (address one){
+        one = upper[user];
+    }
 
 
     function getUppers(address user) public view returns (address one, address two, address three, address four, address five){
