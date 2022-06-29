@@ -7,7 +7,10 @@ contract WhitelistSale is ERC721 {
     bytes32 public merkleRoot;
     uint256 public nextTokenId;
     mapping(uint256 => bool) public claimed;
-
+    event Minted(
+        uint256 indexed id,
+        address to
+    );
     constructor(bytes32 _merkleRoot) public ERC721("NFT", "NFT") {
         merkleRoot = _merkleRoot;
     }
@@ -18,5 +21,6 @@ contract WhitelistSale is ERC721 {
         require(MerkleProof.verify(merkleProof, merkleRoot, keccak256(abi.encodePacked(msg.sender))), "invalid merkle proof");
         nextTokenId++;
         _mint(msg.sender, nextTokenId);
+        emit Minted(nextTokenId,msg.sender);
     }
 }
